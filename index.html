@@ -3,64 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wi-Fi Calling App</title>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js"></script>
+    <title>Wi-Fi Calling | Zeabur</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; margin: 0; display: flex; justify-content: center; }
-        .app-container { width: 100%; max-width: 400px; background: white; height: 100vh; display: flex; flex-direction: column; }
-        .header { padding: 20px; background: #007bff; color: white; text-align: center; }
-        .nav { display: flex; border-top: 1px solid #ddd; }
-        .nav button { flex: 1; padding: 15px; border: none; background: white; cursor: pointer; }
-        .nav button.active { border-top: 3px solid #007bff; color: #007bff; }
-        .page { display: none; padding: 20px; flex: 1; overflow-y: auto; }
+        :root { --primary: #6366f1; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; justify-content: center; height: 100vh; }
+        .phone-shell { width: 100%; max-width: 450px; background: white; display: flex; flex-direction: column; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .header { background: var(--primary); color: white; padding: 25px 20px; text-align: center; }
+        .nav { display: flex; background: #fff; border-top: 1px solid #e2e8f0; }
+        .nav button { flex: 1; padding: 15px; border: none; background: none; font-weight: 600; color: #64748b; cursor: pointer; transition: 0.3s; }
+        .nav button.active { color: var(--primary); border-top: 3px solid var(--primary); }
+        .content { flex: 1; padding: 20px; overflow-y: auto; }
+        .page { display: none; }
         .active-page { display: block; }
-        input { width: 80%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; }
-        .btn-call { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; width: 100%; font-size: 1.2rem; }
-        .btn-hangup { background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 5px; width: 100%; margin-top: 10px; }
-        .contact-item, .log-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 14px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-call { background: #22c55e; color: white; }
+        .btn-hangup { background: #ef4444; color: white; }
+        .btn-google { background: white; border: 1px solid #cbd5e1; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .card { background: #f1f5f9; padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
     </style>
 </head>
 <body>
 
-<div class="app-container" id="login-screen">
-    <div class="header"><h1>Wi-Fi Call</h1></div>
-    <div style="padding: 50px; text-align: center;">
-        <button onclick="login()" style="padding: 10px 20px;">Login with Google</button>
-    </div>
+<div id="login-page" class="phone-shell" style="justify-content: center; align-items: center; padding: 20px;">
+    <h2>Wi-Fi Calling</h2>
+    <p>Connect with your Gmail account</p>
+    <button class="btn btn-google" onclick="login()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/pwa/google.svg" width="20"> Login with Google
+    </button>
 </div>
 
-<div class="app-container" id="main-app" style="display:none;">
+<div id="app-page" class="phone-shell" style="display:none;">
     <div class="header">
-        <div id="my-number-display">Your ID: Loading...</div>
+        <div id="my-id-tag" style="font-size: 0.8rem; opacity: 0.8;">YOUR ID</div>
+        <div id="my-number" style="font-size: 1.5rem; font-weight: bold;">------</div>
     </div>
 
-    <div id="page-dialer" class="page active-page">
-        <input type="text" id="remote-id" placeholder="Enter Friend's ID">
-        <button class="btn-call" onclick="startCall()">📞 Start Call</button>
-        <div id="call-status" style="margin-top:20px; color: #666;">Ready</div>
-        <button id="hangup-btn" class="btn-hangup" style="display:none;" onclick="hangup()">End Call</button>
-    </div>
+    <div class="content">
+        <div id="page-dialer" class="page active-page">
+            <input type="text" id="target-id" placeholder="Enter Recipient's ID">
+            <button class="btn btn-call" id="call-btn" onclick="makeCall()">📞 Start Call</button>
+            <button class="btn btn-hangup" id="hangup-btn" style="display:none;" onclick="endCall()">End Call</button>
+            <p id="status" style="text-align:center; color: #64748b; margin-top: 20px;">Ready to call</p>
+        </div>
 
-    <div id="page-contacts" class="page">
-        <h3>Saved Contacts</h3>
-        <div id="contacts-list"></div>
-        <hr>
-        <input type="text" id="new-contact-name" placeholder="Name">
-        <input type="text" id="new-contact-id" placeholder="ID">
-        <button onclick="addContact()">Add Contact</button>
-    </div>
+        <div id="page-contacts" class="page">
+            <h3>Contacts</h3>
+            <div id="contact-list"></div>
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+            <input type="text" id="c-name" placeholder="Name">
+            <input type="text" id="c-id" placeholder="ID">
+            <button class="btn" style="background: var(--primary); color: white;" onclick="saveContact()">Save Contact</button>
+        </div>
 
-    <div id="page-log" class="page">
-        <h3>Call History</h3>
-        <div id="history-list"></div>
+        <div id="page-logs" class="page">
+            <h3>Recent Calls</h3>
+            <div id="log-list"></div>
+        </div>
     </div>
 
     <nav class="nav">
-        <button onclick="showPage('page-dialer')" class="active">Dialer</button>
-        <button onclick="showPage('page-contacts')">Contacts</button>
-        <button onclick="showPage('page-log')">History</button>
+        <button onclick="switchTab('page-dialer', this)" class="active">Dial</button>
+        <button onclick="switchTab('page-contacts', this)">Contacts</button>
+        <button onclick="switchTab('page-logs', this)">Logs</button>
     </nav>
 </div>
 
@@ -70,147 +78,126 @@
 // --- CONFIGURATION ---
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_ID",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
     appId: "YOUR_APP_ID"
 };
 
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
 const db = firebase.database();
+const auth = firebase.auth();
 
-let localStream;
-let peerConnection;
-let myID = "";
-const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+let myID, pc, localStream;
+const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
 // --- AUTH ---
 function login() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider);
+    auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
 }
 
 auth.onAuthStateChanged(user => {
     if (user) {
         myID = user.uid.substring(0, 6).toUpperCase();
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('main-app').style.display = 'flex';
-        document.getElementById('my-number-display').innerText = "Your ID: " + myID;
-        listenForInbound();
-        loadContacts();
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('app-page').style.display = 'flex';
+        document.getElementById('my-number').innerText = myID;
+        listenForCalls();
+        renderContacts();
+        renderLogs();
     }
 });
 
-// --- NAVIGATION ---
-function showPage(pageId) {
+// --- TABS ---
+function switchTab(id, el) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-    document.getElementById(pageId).classList.add('active-page');
+    document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active-page');
+    el.classList.add('active');
 }
 
-// --- CALL LOGIC (WebRTC) ---
-async function startCall() {
-    const targetID = document.getElementById('remote-id').value;
-    if (!targetID) return alert("Enter an ID");
+// --- CALLING LOGIC ---
+async function makeCall() {
+    const dest = document.getElementById('target-id').value;
+    if(!dest) return;
 
-    document.getElementById('call-status').innerText = "Calling " + targetID + "...";
+    pc = new RTCPeerConnection(config);
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+    pc.onicecandidate = e => { if(e.candidate) db.ref(`calls/${dest}/ice`).push(e.candidate); };
+    pc.ontrack = e => document.getElementById('remoteAudio').srcObject = e.streams[0];
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    db.ref(`calls/${dest}`).set({ offer, from: myID });
+
+    document.getElementById('status').innerText = "Calling...";
+    document.getElementById('call-btn').style.display = 'none';
     document.getElementById('hangup-btn').style.display = 'block';
 
-    peerConnection = new RTCPeerConnection(servers);
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-    peerConnection.ontrack = event => {
-        document.getElementById('remoteAudio').srcObject = event.streams[0];
-    };
-
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-
-    const callRef = db.ref('calls/' + targetID);
-    callRef.set({ offer, caller: myID });
-
-    // Listen for answer
-    callRef.on('value', async snapshot => {
-        const data = snapshot.val();
-        if (data?.answer && !peerConnection.currentRemoteDescription) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-            document.getElementById('call-status').innerText = "Connected";
-            addToLog("Outgoing to " + targetID);
+    db.ref(`calls/${dest}/answer`).on('value', async s => {
+        if(s.val() && !pc.currentRemoteDescription) {
+            await pc.setRemoteDescription(new RTCSessionDescription(s.val()));
+            saveLog(`Outgoing to ${dest}`);
         }
     });
 }
 
-function listenForInbound() {
-    db.ref('calls/' + myID).on('value', async snapshot => {
-        const data = snapshot.val();
-        if (data && data.offer && !peerConnection) {
-            if (confirm("Incoming call from " + data.caller)) {
-                peerConnection = new RTCPeerConnection(servers);
+function listenForCalls() {
+    db.ref(`calls/${myID}`).on('value', async s => {
+        const data = s.val();
+        if(data && data.offer && !pc) {
+            if(confirm(`Incoming call from ${data.from}?`)) {
+                pc = new RTCPeerConnection(config);
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+                localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
-                peerConnection.ontrack = event => {
-                    document.getElementById('remoteAudio').srcObject = event.streams[0];
-                };
+                pc.onicecandidate = e => { if(e.candidate) db.ref(`calls/${data.from}/answerIce`).push(e.candidate); };
+                pc.ontrack = e => document.getElementById('remoteAudio').srcObject = e.streams[0];
 
-                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-                const answer = await peerConnection.createAnswer();
-                await peerConnection.setLocalDescription(answer);
-
-                db.ref('calls/' + myID).update({ answer });
+                await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                db.ref(`calls/${myID}/answer`).set(answer);
+                
                 document.getElementById('hangup-btn').style.display = 'block';
-                document.getElementById('call-status').innerText = "In Call with " + data.caller;
-                addToLog("Incoming from " + data.caller);
+                saveLog(`Incoming from ${data.from}`);
             }
         }
     });
 }
 
-function hangup() {
-    location.reload(); // Simplest way to reset all connections
-}
+function endCall() { location.reload(); }
 
-// --- CONTACTS & LOGS ---
-function addContact() {
-    const name = document.getElementById('new-contact-name').value;
-    const id = document.getElementById('new-contact-id').value;
+// --- STORAGE ---
+function saveContact() {
     const contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
-    contacts.push({ name, id });
+    contacts.push({ name: document.getElementById('c-name').value, id: document.getElementById('c-id').value });
     localStorage.setItem('contacts', JSON.stringify(contacts));
-    loadContacts();
+    renderContacts();
 }
 
-function loadContacts() {
-    const list = document.getElementById('contacts-list');
-    list.innerHTML = "";
-    const contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
-    contacts.forEach(c => {
-        list.innerHTML += `<div class="contact-item"><span>${c.name} (${c.id})</span> <button onclick="dial('${c.id}')">Call</button></div>`;
-    });
+function renderContacts() {
+    const list = JSON.parse(localStorage.getItem('contacts') || '[]');
+    document.getElementById('contact-list').innerHTML = list.map(c => `
+        <div class="card"><b>${c.name}</b> <span>${c.id}</span></div>
+    `).join('');
 }
 
-function dial(id) {
-    document.getElementById('remote-id').value = id;
-    showPage('page-dialer');
-    startCall();
-}
-
-function addToLog(msg) {
+function saveLog(msg) {
     const logs = JSON.parse(localStorage.getItem('logs') || '[]');
-    logs.unshift(msg + " at " + new Date().toLocaleTimeString());
-    localStorage.setItem('logs', JSON.stringify(logs));
+    logs.unshift(`${msg} - ${new Date().toLocaleTimeString()}`);
+    localStorage.setItem('logs', JSON.stringify(logs.slice(0, 10)));
     renderLogs();
 }
 
 function renderLogs() {
-    const list = document.getElementById('history-list');
     const logs = JSON.parse(localStorage.getItem('logs') || '[]');
-    list.innerHTML = logs.map(l => `<div class="log-item">${l}</div>`).join('');
+    document.getElementById('log-list').innerHTML = logs.map(l => `<div class="card">${l}</div>`).join('');
 }
-renderLogs();
 </script>
 </body>
 </html>
